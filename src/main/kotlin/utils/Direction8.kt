@@ -1,6 +1,6 @@
 package utils
 
-enum class Direction(val dx: Int, val dy: Int) {
+enum class Direction8(val dx: Int, val dy: Int) {
     N(0, -1),
     NE(1, -1),
     E(1, 0),

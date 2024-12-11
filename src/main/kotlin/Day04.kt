@@ -1,21 +1,21 @@
-import utils.Direction
+import utils.Direction8
 
 object Day04 {
     const val EMPTY_CHAR = '.'
 
     fun List<String>.charAt(x: Int, y: Int): Char? = getOrNull(y)?.getOrNull(x)
 
-    fun List<String>.charAt(x: Int, y: Int, direction: Direction, distance: UInt): Char = charAt(
+    fun List<String>.charAt(x: Int, y: Int, direction: Direction8, distance: UInt): Char = charAt(
         x + direction.dx * distance.toInt(),
         y + direction.dy * distance.toInt()
     ) ?: EMPTY_CHAR
 
-    fun List<String>.isMAXRayFromX(x: Int, y: Int, direction: Direction): Boolean =
+    fun List<String>.isMAXRayFromX(x: Int, y: Int, direction: Direction8): Boolean =
         charAt(x, y, direction, 1u) == 'M' &&
         charAt(x, y, direction, 2u) == 'A' &&
         charAt(x, y, direction, 3u) == 'S'
 
-    fun List<String>.countDirectionalMASFromX(x: Int, y: Int): Int = Direction.entries.sumOf { direction ->
+    fun List<String>.countDirectionalMASFromX(x: Int, y: Int): Int = Direction8.entries.sumOf { direction ->
         if(isMAXRayFromX(x, y, direction)) 1
         else @Suppress("USELESS_CAST") (0 as Int)
     }

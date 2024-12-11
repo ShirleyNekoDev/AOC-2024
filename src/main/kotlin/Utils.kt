@@ -8,6 +8,7 @@ fun readInput(name: String) = Class.forName("UtilsKt")
     .getResourceAsStream("$name.txt")!!
     .bufferedReader().lines()
     .map { it.trim() }
+    .filter { it.isNotBlank() }
     .toList()
 
 /**
