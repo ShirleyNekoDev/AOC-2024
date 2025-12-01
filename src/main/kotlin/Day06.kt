@@ -1,25 +1,25 @@
 import utils.Direction4
-import utils.Point
+import utils.Position
 
 object Day06 {
     const val OBSTACLE_CHAR = '#'
     const val START_CHAR = '^'
 
     private data class GuardMap(
-        val obstacles: Set<Point>,
-        val start: Point,
+        val obstacles: Set<Position>,
+        val start: Position,
         val width: Int,
         val height: Int,
     ) {
         companion object {
             fun parse(input: List<String>) : GuardMap {
-                lateinit var start: Point
-                val obstacles = buildSet<Point> {
+                lateinit var start: Position
+                val obstacles = buildSet<Position> {
                     input.forEachIndexed { y, line ->
                         line.forEachIndexed { x, char ->
                             when(char) {
-                                OBSTACLE_CHAR -> add(Point(x, y))
-                                START_CHAR -> start = Point(x, y)
+                                OBSTACLE_CHAR -> add(Position(x, y))
+                                START_CHAR -> start = Position(x, y)
                             }
                         }
                     }
@@ -31,7 +31,7 @@ object Day06 {
         }
     }
 
-    private fun nextPosition(position: Point, direction: Direction4): Point {
+    private fun nextPosition(position: Position, direction: Direction4): Position {
         return position.copy(
             x = position.x + direction.dx,
             y = position.y + direction.dy,
@@ -39,11 +39,11 @@ object Day06 {
     }
 
     private data class GuardState(
-        val position: Point,
+        val position: Position,
         val direction: Direction4,
         // visited fields with direction which we faced on the field
         // we use linked maps/sets to track insertion ordering
-        val visitedFields: LinkedHashMap<Point, LinkedHashSet<Direction4>> = LinkedHashMap<Point, LinkedHashSet<Direction4>>(),
+        val visitedFields: LinkedHashMap<Position, LinkedHashSet<Direction4>> = LinkedHashMap<Position, LinkedHashSet<Direction4>>(),
     )
 
     private enum class WalkTerminationReason {
@@ -91,7 +91,7 @@ object Day06 {
         }
     }
 
-    private fun findVisitedFields(guardMap: GuardMap): List<Point> {
+    private fun findVisitedFields(guardMap: GuardMap): List<Position> {
         var state = GuardState(
             position = guardMap.start,
             direction = Direction4.N, // always faces upwards at start
@@ -105,7 +105,7 @@ object Day06 {
         .let(::findVisitedFields)
         .size
 
-    private fun findPossibleLoopingObstaclePlacements(guardMap: GuardMap): List<Point> {
+    private fun findPossibleLoopingObstaclePlacements(guardMap: GuardMap): List<Position> {
         var state = GuardState(
             position = guardMap.start,
             direction = Direction4.N, // always faces upwards at start

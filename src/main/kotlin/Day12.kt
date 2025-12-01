@@ -1,115 +1,118 @@
 import utils.Direction4
-import utils.Point
+import utils.Position
 import utils.atDirection
+import java.util.ArrayDeque
+import java.util.Deque
+import kotlin.collections.flatMap
+import kotlin.collections.takeWhile
 
 
-typealias Crop = Char
+typealias CommandList = Deque<Direction4>
 
 object Day12 {
+    const val WALL = '#'
+    const val BOX = 'O'
+    const val ROBOT = '@'
 
-    class Plot(
-        val type: Crop,
-        val id: Int,
-        val positions: MutableSet<Point>,
+    class Warehouse(
+        val map: MutableMap<Position, Obstacle>,
+        var robot: Position,
+        val commandList: CommandList,
     ) {
-        fun connectionCount(pos: Point): Int =
-            Direction4.entries.count { direction ->
-                pos.atDirection(direction) in positions
+        enum class Obstacle {
+            WALL, BOX;
+        }
+
+        companion object {
+            fun parseInput(input: List<String>) : Warehouse {
+                lateinit var robot: Position
+                val mapInput = input.takeWhile { it.isNotEmpty() }
+                return Warehouse(
+                    map = buildMap {
+                        mapInput.forEachIndexed { y, line ->
+                            line.forEachIndexed { x, char ->
+                                when(char) {
+                                    WALL -> put(Position(x, y), Obstacle.WALL)
+                                    BOX -> put(Position(x, y), Obstacle.BOX)
+                                    ROBOT -> robot = Position(x, y)
+                                    else -> {/* do nothing */}
+                                }
+                            }
+                        }
+                    }.toMutableMap(),
+                    robot = robot,
+                    commandList = ArrayDeque(input.subList(mapInput.size+1, input.size)
+                        .flatMap { line ->
+                            line.map { char ->
+                                when(char) {
+                                    '<' -> Direction4.W
+                                    '^' -> Direction4.N
+                                    '>' -> Direction4.E
+                                    'v' -> Direction4.S
+                                    else -> error("unknown movement $char")
+                                }
+                            }
+                        }
+                    )
+                )
             }
-
-        val area: Int get() = positions.size
-
-        val perimeter by lazy<Int> {
-            positions.sumOf { pos -> 4 - connectionCount(pos) }
         }
 
-        val sides by lazy<Int> {
-            var sides = mutableSetOf<Pair<Direction4, Point>>()
-
-            positions.forEach { pos ->
-                if(pos.atDirection(Direction4.N) !in positions) {
-                    var leftmostNPos = pos.atDirection(Direction4.W)
-                    while(leftmostNPos in positions && leftmostNPos.atDirection(Direction4.N) !in positions) {
-                        leftmostNPos = leftmostNPos.atDirection(Direction4.W)
-                    }
-                    sides.add(Direction4.N to leftmostNPos)
-                }
-                if(pos.atDirection(Direction4.S) !in positions) {
-                    var leftmostSPos = pos.atDirection(Direction4.W)
-                    while(leftmostSPos in positions && leftmostSPos.atDirection(Direction4.S) !in positions) {
-                        leftmostSPos = leftmostSPos.atDirection(Direction4.W)
-                    }
-                    sides.add(Direction4.S to leftmostSPos)
-                }
-                if(pos.atDirection(Direction4.W) !in positions) {
-                    var topmostWPos = pos.atDirection(Direction4.S)
-                    while(topmostWPos in positions && topmostWPos.atDirection(Direction4.W) !in positions) {
-                        topmostWPos = topmostWPos.atDirection(Direction4.S)
-                    }
-                    sides.add(Direction4.W to topmostWPos)
-                }
-                if(pos.atDirection(Direction4.E) !in positions) {
-                    var topMostEPos = pos.atDirection(Direction4.S)
-                    while(topMostEPos in positions && topMostEPos.atDirection(Direction4.E) !in positions) {
-                        topMostEPos = topMostEPos.atDirection(Direction4.S)
-                    }
-                    sides.add(Direction4.E to topMostEPos)
-                }
+        /**
+         * @return false, if the box could not be moved
+         */
+        fun moveBox(position: Position, direction: Direction4): Boolean {
+            assert(map[position] == Obstacle.BOX)
+            val targetPosition = position.atDirection(direction)
+            val canMove = when(map[targetPosition]) {
+                Obstacle.WALL -> return false
+                Obstacle.BOX -> moveBox(targetPosition, direction)
+                else -> true
             }
-
-            sides.size
+            if(canMove) {
+                map.put(targetPosition, map.remove(position)!!)
+            }
+            return canMove
         }
 
-        override fun toString(): String = buildString {
-            append("Plot[$type$id,area=$area,perimeter=$perimeter]{")
-            positions.joinTo(this)
-            append("}")
+        /**
+         * @return true, if the robot is not yet done
+         */
+        fun step(): Boolean {
+            if(commandList.isEmpty())
+                return false
+            val direction = commandList.pollFirst()
+            val targetPosition = robot.atDirection(direction)
+            val obstacle = map[targetPosition]
+            when(obstacle) {
+                Obstacle.WALL -> return true
+                Obstacle.BOX -> moveBox(targetPosition, direction)
+                else -> {}
+            }
+            robot = targetPosition
+//            println(this)
+            return true
         }
+
+        fun coordinateSum(): Long = map.keys.sumOf { position ->
+            100L * position.y + position.x
+        }
+
+        override fun toString(): String = """
+            Warehouse(
+                robot=$robot,
+                map=$map,
+                commandList=$commandList
+            )
+        """.trimIndent()
     }
 
-    fun List<String>.findPlots(): List<Plot> {
-        val plotsByPos = mutableMapOf<Point, Plot>()
-        val plotsByType = mutableMapOf<Crop, MutableList<Plot>>()
-
-        forEachIndexed { y, line ->
-            line.forEachIndexed { x, type ->
-                val pos = Point(x, y)
-                val plotW = plotsByPos[pos.atDirection(Direction4.W)]
-                    ?.takeIf { it.type == type }
-                    ?.apply { positions.add(pos) }
-                val plotN = plotsByPos[pos.atDirection(Direction4.N)]
-                    ?.takeIf { it.type == type }
-                    ?.apply { positions.add(pos) }
-                if(plotW != null && plotN != null) {
-                    if(plotW != plotN) {
-                        // two different adjacent plots with same type -> merge plot W into plot N
-                        plotN.positions.addAll(plotW.positions)
-                        plotW.positions.forEach { pos ->
-                            plotsByPos[pos] = plotN
-                        }
-                        plotsByType[type]!!.remove(plotW)
-                    } else {
-                        plotsByPos[pos] = plotW
-                    }
-                } else if(plotW == null && plotN == null) {
-                    val plotList = plotsByType.computeIfAbsent(type) { mutableListOf<Plot>() }
-                    Plot(type, plotList.size, mutableSetOf(pos))
-                        .also {
-                            plotList.add(it)
-                            plotsByPos[pos] = it
-                        }
-                } else {
-                    plotsByPos[pos] = (plotW ?: plotN)!!
-                }
-            }
-        }
-
-        return plotsByType.values.flatMap { it }
+    fun part1(input: List<String>): Long {
+        val data = Warehouse.parseInput(input)
+//        println(data)
+        while(data.step()) { /*step*/ }
+        return data.coordinateSum()
     }
 
-    fun part1(input: List<String>): Int = input.findPlots()
-        .sumOf { plot -> plot.area * plot.perimeter }
-
-    fun part2(input: List<String>): Int = input.findPlots()
-        .sumOf { plot -> plot.area * plot.sides }
+    fun part2(input: List<String>): Int = 1
 }

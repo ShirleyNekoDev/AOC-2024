@@ -11,7 +11,7 @@ enum class Direction8(val dx: Int, val dy: Int) {
     NW(-1, -1);
 }
 
-fun Point.atDirection(direction: Direction8): Point = copy(
+fun Position.atDirection(direction: Direction8): Position = copy(
     x = x + direction.dx,
     y = y + direction.dy,
 )
